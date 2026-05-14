@@ -30,6 +30,14 @@ db.exec(`
     FOREIGN KEY (member_id) REFERENCES members(id)
   );
 
+  CREATE TABLE IF NOT EXISTS messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    member_id INTEGER NOT NULL,
+    content TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now','localtime')),
+    FOREIGN KEY (member_id) REFERENCES members(id)
+  );
+
   CREATE TABLE IF NOT EXISTS interviews (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     member_id INTEGER NOT NULL,
@@ -262,6 +270,37 @@ app.get('/api/schedule', (req, res) => {
   }
 
   res.json({ days });
+});
+
+// ============ Messages ============
+
+function cleanMessages() {
+  // Delete messages older than 3 months
+  db.prepare("DELETE FROM messages WHERE created_at < datetime('now','localtime','-3 months')").run();
+  // Keep only latest 200
+  db.prepare('DELETE FROM messages WHERE id NOT IN (SELECT id FROM messages ORDER BY id DESC LIMIT 200)').run();
+}
+
+app.get('/api/messages', (req, res) => {
+  cleanMessages();
+  const messages = db.prepare(`
+    SELECT g.*, m.name as member_name
+    FROM messages g
+    JOIN members m ON g.member_id = m.id
+    ORDER BY g.created_at DESC
+    LIMIT 200
+  `).all();
+  res.json(messages.reverse());
+});
+
+app.post('/api/messages', (req, res) => {
+  const { member_id, content } = req.body;
+  if (!member_id || !content || !content.trim()) {
+    return res.status(400).json({ error: '内容不能为空' });
+  }
+  db.prepare('INSERT INTO messages (member_id, content) VALUES (?, ?)').run(member_id, content.trim());
+  cleanMessages();
+  res.json({ success: true });
 });
 
 // Start server - bind to all interfaces so LAN users can access

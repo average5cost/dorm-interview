@@ -125,6 +125,24 @@
     </div>
   </div>
 
+  <!-- Message Board -->
+  <div id="msgPanel" class="msg-panel">
+    <div class="msg-header" id="msgToggle">
+      <span>💬 留言板</span>
+      <span id="msgBadge" class="msg-badge hidden">0</span>
+    </div>
+    <div class="msg-body">
+      <div class="msg-list" id="msgList">
+        <div class="msg-empty">暂无留言</div>
+      </div>
+      <div class="msg-input-area">
+        <select id="msgMember" class="msg-member-select"></select>
+        <input type="text" id="msgInput" placeholder="说点什么..." maxlength="200">
+        <button id="msgSend" class="btn btn-sm btn-primary">发送</button>
+      </div>
+    </div>
+  </div>
+
   <script src="app.js"></script>
 </body>
 </html>

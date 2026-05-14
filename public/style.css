@@ -559,3 +559,143 @@ main {
 .toast.show {
   transform: translateX(-50%) translateY(0);
 }
+
+/* Message Panel */
+.msg-panel {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  width: 340px;
+  background: var(--card);
+  border-left: 1px solid var(--border);
+  border-top: 1px solid var(--border);
+  border-radius: 12px 0 0 0;
+  box-shadow: -2px -2px 12px rgba(0,0,0,0.08);
+  z-index: 500;
+  transition: transform 0.25s ease;
+  transform: translateY(calc(100% - 44px));
+}
+
+.msg-panel.open {
+  transform: translateY(0);
+}
+
+.msg-header {
+  padding: 10px 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 700;
+  font-size: 0.9rem;
+  user-select: none;
+  border-bottom: 1px solid var(--border);
+}
+
+.msg-header:hover { background: var(--bg); }
+
+.msg-badge {
+  background: var(--danger);
+  color: white;
+  font-size: 0.7rem;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+}
+
+.msg-badge.hidden { display: none; }
+
+.msg-body {
+  display: flex;
+  flex-direction: column;
+  height: 350px;
+}
+
+.msg-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.msg-empty {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 40px 0;
+  font-size: 0.85rem;
+}
+
+.msg-bubble {
+  max-width: 85%;
+  padding: 8px 12px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  animation: msgIn 0.2s ease;
+}
+
+@keyframes msgIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.msg-bubble.msg-mine {
+  align-self: flex-end;
+  background: var(--primary);
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+
+.msg-bubble.msg-other {
+  align-self: flex-start;
+  background: #f0efed;
+  border-bottom-left-radius: 4px;
+}
+
+.msg-bubble .msg-sender {
+  font-size: 0.7rem;
+  font-weight: 700;
+  margin-bottom: 2px;
+  opacity: 0.8;
+}
+
+.msg-bubble .msg-time {
+  font-size: 0.65rem;
+  opacity: 0.6;
+  margin-top: 3px;
+}
+
+.msg-input-area {
+  display: flex;
+  gap: 6px;
+  padding: 8px;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.msg-member-select {
+  width: 80px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.8rem;
+  background: var(--card);
+}
+
+.msg-input-area input {
+  flex: 1;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+
+.msg-input-area button {
+  white-space: nowrap;
+}

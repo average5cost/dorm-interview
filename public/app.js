@@ -8,7 +8,7 @@ let lastDataHash = '';
 // ============ Init ============
 document.addEventListener('DOMContentLoaded', () => {
   initTimelineWeek();
-  loadMembers();
+  loadMembers().then(() => initMessagePanel());
   loadInterviews();
   bindEvents();
   startPolling();
@@ -107,10 +107,14 @@ async function api(path, options = {}) {
 async function loadMembers() {
   members = await api('/api/members');
   // Populate form select
-  const select = document.getElementById('formMember');
-  select.innerHTML = '<option value="">请选择</option>';
+  const fs = document.getElementById('formMember');
+  fs.innerHTML = '<option value="">请选择</option>';
+  // Populate message select
+  const ms = document.getElementById('msgMember');
+  if (ms) ms.innerHTML = '';
   members.forEach(m => {
-    select.innerHTML += `<option value="${m.id}">${m.name}</option>`;
+    fs.innerHTML += `<option value="${m.id}">${m.name}</option>`;
+    if (ms) ms.innerHTML += `<option value="${m.id}">${esc(m.name)}</option>`;
   });
 }
 
@@ -476,10 +480,104 @@ function startPolling() {
         // Show toast notification
         showToast('有室友更新了面试信息，页面已自动刷新');
       }
+
+      // Poll messages
+      const newMsgs = await api('/api/messages');
+      if (newMsgs.length !== messages.length) {
+        messages = newMsgs;
+        lastMsgId = newMsgs.length > 0 ? newMsgs[newMsgs.length-1].id : 0;
+        renderMessages();
+      }
     } catch (e) {
       // Server might be down, ignore
     }
   }, 5000);
+}
+
+// ============ Messages ============
+let messages = [];
+let lastMsgId = 0;
+let msgOpen = false;
+let msgReadCount = 0;
+
+function initMessagePanel() {
+  document.getElementById('msgToggle').addEventListener('click', () => {
+    msgOpen = !msgOpen;
+    const panel = document.getElementById('msgPanel');
+    if (msgOpen) {
+      panel.classList.add('open');
+      msgReadCount = messages.length;
+      updateMsgBadge();
+      document.getElementById('msgInput').focus();
+    } else {
+      panel.classList.remove('open');
+    }
+  });
+
+  document.getElementById('msgSend').addEventListener('click', sendMessage);
+  document.getElementById('msgInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') sendMessage();
+  });
+
+  loadMessages();
+}
+
+async function loadMessages() {
+  const data = await api('/api/messages');
+  if (data.length > 0 && data[data.length-1].id === lastMsgId && messages.length > 0) return;
+  messages = data;
+  lastMsgId = data.length > 0 ? data[data.length-1].id : 0;
+  renderMessages();
+}
+
+function renderMessages() {
+  const list = document.getElementById('msgList');
+  const currentMember = document.getElementById('msgMember').value;
+
+  if (messages.length === 0) {
+    list.innerHTML = '<div class="msg-empty">暂无留言，来抢沙发吧~</div>';
+    return;
+  }
+
+  list.innerHTML = messages.map(msg => {
+    const isMine = parseInt(currentMember) === msg.member_id;
+    const cls = isMine ? 'msg-mine' : 'msg-other';
+    const time = msg.created_at ? msg.created_at.slice(11, 16) : '';
+    return `
+      <div class="msg-bubble ${cls}">
+        ${isMine ? '' : `<div class="msg-sender">${esc(msg.member_name)}</div>`}
+        <div>${esc(msg.content)}</div>
+        <div class="msg-time">${time}</div>
+      </div>`;
+  }).join('');
+
+  list.scrollTop = list.scrollHeight;
+  updateMsgBadge();
+}
+
+function updateMsgBadge() {
+  const badge = document.getElementById('msgBadge');
+  const unread = msgOpen ? 0 : messages.length - msgReadCount;
+  if (unread > 0) {
+    badge.textContent = unread;
+    badge.classList.remove('hidden');
+  } else {
+    badge.classList.add('hidden');
+  }
+}
+
+async function sendMessage() {
+  const input = document.getElementById('msgInput');
+  const content = input.value.trim();
+  if (!content) return;
+
+  const memberId = parseInt(document.getElementById('msgMember').value);
+  await api('/api/messages', {
+    method: 'POST',
+    body: JSON.stringify({ member_id: memberId, content })
+  });
+  input.value = '';
+  await loadMessages();
 }
 
 // ============ Toast ============
