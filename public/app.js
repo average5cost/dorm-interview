@@ -1,5 +1,6 @@
 // ============ State ============
 let currentView = 'list';
+let currentUser = null; // { member_id, name }
 let interviews = [];
 let members = [];
 let timelineWeekStart = null;
@@ -8,10 +9,10 @@ let lastDataHash = '';
 // ============ Init ============
 document.addEventListener('DOMContentLoaded', () => {
   initTimelineWeek();
-  loadMembers().then(() => initMessagePanel());
-  loadInterviews();
+  loadMembers().then(() => {
+    restoreLogin();
+  });
   bindEvents();
-  startPolling();
 });
 
 function localDateStr(date) {
@@ -50,7 +51,7 @@ function bindEvents() {
   });
   document.querySelectorAll('.modal-overlay').forEach(overlay => {
     overlay.addEventListener('click', (e) => {
-      if (e.target === overlay) closeModal(overlay.id);
+      if (e.target === overlay && overlay.id !== 'modalLogin') closeModal(overlay.id);
     });
   });
 
@@ -59,6 +60,12 @@ function bindEvents() {
   document.getElementById('btnClearFilter').addEventListener('click', () => {
     document.getElementById('filterDate').value = '';
     loadInterviews();
+  });
+
+  // Login
+  document.getElementById('btnLogin').addEventListener('click', handleLogin);
+  document.getElementById('loginPassword').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') handleLogin();
   });
 
   // Members
@@ -108,14 +115,87 @@ async function loadMembers() {
   members = await api('/api/members');
   // Populate form select
   const fs = document.getElementById('formMember');
-  fs.innerHTML = '<option value="">请选择</option>';
-  // Populate message select
-  const ms = document.getElementById('msgMember');
-  if (ms) ms.innerHTML = '';
-  members.forEach(m => {
-    fs.innerHTML += `<option value="${m.id}">${m.name}</option>`;
-    if (ms) ms.innerHTML += `<option value="${m.id}">${esc(m.name)}</option>`;
+  if (fs) {
+    fs.innerHTML = '<option value="">请选择</option>';
+    members.forEach(m => {
+      fs.innerHTML += `<option value="${m.id}">${m.name}</option>`;
+    });
+  }
+  // Populate login select
+  const ls = document.getElementById('loginMember');
+  if (ls) {
+    ls.innerHTML = '';
+    members.forEach(m => {
+      ls.innerHTML += `<option value="${m.id}">${m.name}</option>`;
+    });
+  }
+}
+
+// ============ Login ============
+function restoreLogin() {
+  const saved = localStorage.getItem('dorm_user');
+  if (saved) {
+    try {
+      currentUser = JSON.parse(saved);
+      if (members.find(m => m.id === currentUser.member_id)) {
+        onLoginSuccess();
+        return;
+      }
+    } catch(e) {}
+  }
+  document.getElementById('modalLogin').classList.add('active');
+  document.getElementById('loginPassword').focus();
+}
+
+function onLoginSuccess() {
+  document.getElementById('modalLogin').classList.remove('active');
+  updateHeaderUser();
+  loadInterviews();
+  initMessagePanel();
+  startPolling();
+}
+
+function updateHeaderUser() {
+  if (!currentUser) return;
+  const idx = members.findIndex(m => m.id === currentUser.member_id);
+  const colors = ['#4f46e5', '#0891b2', '#ea580c', '#16a34a'];
+  const dotColor = colors[idx] || '#4f46e5';
+
+  const hr = document.querySelector('.header-right');
+  const existing = document.getElementById('headerUser');
+  if (existing) existing.remove();
+
+  const div = document.createElement('div');
+  div.id = 'headerUser';
+  div.className = 'header-user';
+  div.innerHTML = `
+    <span class="user-dot" style="background:${dotColor}"></span>
+    ${esc(currentUser.name)}
+    <button class="btn-logout" id="btnLogout">退出</button>
+  `;
+  hr.insertBefore(div, hr.firstChild);
+
+  div.querySelector('#btnLogout').addEventListener('click', () => {
+    localStorage.removeItem('dorm_user');
+    location.reload();
   });
+}
+
+async function handleLogin() {
+  const memberId = parseInt(document.getElementById('loginMember').value);
+  const password = document.getElementById('loginPassword').value;
+  const res = await api('/api/login', {
+    method: 'POST',
+    body: JSON.stringify({ member_id: memberId, password })
+  });
+  if (res.error) {
+    document.getElementById('loginError').textContent = res.error;
+    document.getElementById('loginError').style.display = 'block';
+  } else {
+    currentUser = { member_id: res.member_id, name: res.name };
+    localStorage.setItem('dorm_user', JSON.stringify(currentUser));
+    onLoginSuccess();
+  }
 }
 
 async function loadInterviews() {
@@ -210,32 +290,44 @@ function renderTimeline(days) {
     html += `<td class="time-label">${hour}</td>`;
 
     days.forEach(d => {
-      html += '<td>';
-      // Check if any interview covers this hour slot
       const nextHour = `${String(parseInt(hour.split(':')[0]) + 1).padStart(2, '0')}:00`;
-      d.interviews.forEach(iv => {
-        if (iv.start_time < nextHour && iv.end_time > hour) {
-          const memberIdx = members.findIndex(m => m.id === iv.member_id);
-          const colorClass = memberColors[memberIdx] || 'member-1';
-          // Calculate position within the cell
-          const startMin = timeToMinutes(iv.start_time);
-          const endMin = timeToMinutes(iv.end_time);
-          const hourMin = timeToMinutes(hour);
-          const nextHourMin = timeToMinutes(nextHour);
+      const hourMin = timeToMinutes(hour);
+      const nextHourMin = timeToMinutes(nextHour);
+      const totalSlotMin = nextHourMin - hourMin;
 
-          const slotStart = Math.max(startMin, hourMin);
-          const slotEnd = Math.min(endMin, nextHourMin);
-          const totalSlotMin = nextHourMin - hourMin;
-          const topPct = ((slotStart - hourMin) / totalSlotMin) * 100;
-          const heightPct = ((slotEnd - slotStart) / totalSlotMin) * 100;
+      // Collect interviews in this hour slot
+      const slotInterviews = d.interviews.filter(iv => iv.start_time < nextHour && iv.end_time > hour);
 
-          html += `<div class="timeline-slot ${colorClass}"
-            style="top:${topPct}%;height:${heightPct}%;"
-            onclick="event.stopPropagation();openDetail(${iv.id})"
-            title="${esc(iv.company)} - ${esc(iv.position)} (${iv.start_time}-${iv.end_time})">
-            ${esc(iv.member_name)} ${esc(iv.company)}
-          </div>`;
-        }
+      // Assign columns for overlapping interviews
+      const columns = []; // each element is an interview or null
+      slotInterviews.forEach(iv => {
+        let col = 0;
+        while (col < columns.length && columns[col] !== null) col++;
+        columns[col] = iv;
+      });
+
+      const colCount = columns.length || 1;
+      html += '<td>';
+
+      slotInterviews.forEach(iv => {
+        const memberIdx = members.findIndex(m => m.id === iv.member_id);
+        const colorClass = memberColors[memberIdx] || 'member-1';
+        const startMin = timeToMinutes(iv.start_time);
+        const endMin = timeToMinutes(iv.end_time);
+
+        const slotStart = Math.max(startMin, hourMin);
+        const slotEnd = Math.min(endMin, nextHourMin);
+        const topPct = ((slotStart - hourMin) / totalSlotMin) * 100;
+        const heightPct = ((slotEnd - slotStart) / totalSlotMin) * 100;
+        const leftPct = (columns.indexOf(iv) / colCount) * 100;
+        const widthPct = (100 / colCount) - 2;
+
+        html += `<div class="timeline-slot ${colorClass}"
+          style="top:${topPct}%;height:${heightPct}%;left:${leftPct}%;width:${widthPct}%;"
+          onclick="event.stopPropagation();openDetail(${iv.id})"
+          title="${esc(iv.company)} - ${esc(iv.position)} (${iv.start_time}-${iv.end_time})">
+          ${esc(iv.member_name)} ${esc(iv.company)}
+        </div>`;
       });
       html += '</td>';
     });
@@ -365,10 +457,10 @@ async function openDetail(id) {
     <div class="detail-section">
       <h3>🏠 该时段宿舍人员情况</h3>
       <div class="member-tags" style="flex-direction:column;gap:10px">
-        ${data.interviewing_members.map(m => {
+        ${data.interviewing_members.map((m, i) => {
           const idx = members.findIndex(mb => mb.id === m.id);
-          const cls = `member-${idx + 1}`;
-          return `<span class="member-tag tag-busy">🔴 ${esc(m.name)} — 面试中</span>`;
+          const label = data.interviewing_members.length > 1 ? `在宿舍${i+1}面试` : '面试中';
+          return `<span class="member-tag tag-busy">🔴 ${esc(m.name)} — ${label}</span>`;
         }).join('')}
         ${data.free_members.map(m => {
           const idx = members.findIndex(mb => mb.id === m.id);
@@ -419,24 +511,29 @@ function openMembers() {
   const list = document.getElementById('memberEditList');
   const colors = ['#4f46e5', '#0891b2', '#ea580c', '#16a34a'];
   list.innerHTML = members.map((m, i) => `
-    <div class="member-edit-item">
+    <div class="member-edit-item" style="flex-wrap:wrap">
       <span class="member-edit-dot" style="background:${colors[i]}"></span>
-      <input type="text" class="member-name-input" data-id="${m.id}" value="${esc(m.name)}" style="flex:1">
+      <input type="text" class="member-name-input" data-id="${m.id}" value="${esc(m.name)}" style="flex:1;min-width:100px" placeholder="姓名">
+      <input type="password" class="member-password-input" data-id="${m.id}" value="" style="width:100px;padding:6px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem" placeholder="新密码">
+      <span style="font-size:0.7rem;color:var(--text-muted)">留空不修改密码</span>
     </div>
   `).join('');
   document.getElementById('modalMembers').classList.add('active');
 }
 
 async function saveMembers() {
-  const inputs = document.querySelectorAll('.member-name-input');
-  for (const input of inputs) {
+  const nameInputs = document.querySelectorAll('.member-name-input');
+  const pwdInputs = document.querySelectorAll('.member-password-input');
+  for (const input of nameInputs) {
     const id = input.dataset.id;
     const name = input.value.trim();
-    if (name && name !== members.find(m => m.id === parseInt(id)).name) {
-      await api(`/api/members/${id}`, {
-        method: 'PUT',
-        body: JSON.stringify({ name })
-      });
+    const pwdInput = document.querySelector(`.member-password-input[data-id="${id}"]`);
+    const password = pwdInput ? pwdInput.value.trim() : '';
+    const body = {};
+    if (name && name !== members.find(m => m.id === parseInt(id)).name) body.name = name;
+    if (password) body.password = password;
+    if (Object.keys(body).length > 0) {
+      await api(`/api/members/${id}`, { method: 'PUT', body: JSON.stringify(body) });
     }
   }
   await loadMembers();
@@ -532,15 +629,16 @@ async function loadMessages() {
 
 function renderMessages() {
   const list = document.getElementById('msgList');
-  const currentMember = document.getElementById('msgMember').value;
+  if (!list) return;
 
   if (messages.length === 0) {
     list.innerHTML = '<div class="msg-empty">暂无留言，来抢沙发吧~</div>';
     return;
   }
 
+  const myId = currentUser ? currentUser.member_id : -1;
   list.innerHTML = messages.map(msg => {
-    const isMine = parseInt(currentMember) === msg.member_id;
+    const isMine = myId === msg.member_id;
     const cls = isMine ? 'msg-mine' : 'msg-other';
     const time = msg.created_at ? msg.created_at.slice(11, 16) : '';
     return `
@@ -569,12 +667,11 @@ function updateMsgBadge() {
 async function sendMessage() {
   const input = document.getElementById('msgInput');
   const content = input.value.trim();
-  if (!content) return;
+  if (!content || !currentUser) return;
 
-  const memberId = parseInt(document.getElementById('msgMember').value);
   await api('/api/messages', {
     method: 'POST',
-    body: JSON.stringify({ member_id: memberId, content })
+    body: JSON.stringify({ member_id: currentUser.member_id, content })
   });
   input.value = '';
   await loadMessages();

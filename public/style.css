@@ -699,3 +699,46 @@ main {
 .msg-input-area button {
   white-space: nowrap;
 }
+
+.modal-login {
+  max-width: 380px;
+}
+
+.header-user {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.header-user .user-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.btn-logout {
+  background: none;
+  border: 1px solid var(--border);
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.btn-logout:hover { background: var(--bg); }
+
+/* Timeline slots arranged in columns */
+.timeline-cell {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.timeline-col {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+}

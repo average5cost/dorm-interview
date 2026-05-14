@@ -18,7 +18,8 @@ db.pragma('foreign_keys = ON');
 db.exec(`
   CREATE TABLE IF NOT EXISTS members (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL
+    name TEXT NOT NULL,
+    password TEXT NOT NULL DEFAULT '123456'
   );
 
   CREATE TABLE IF NOT EXISTS member_status (
@@ -52,6 +53,9 @@ db.exec(`
   );
 `);
 
+// Migration: add password column for older databases
+try { db.prepare('ALTER TABLE members ADD COLUMN password TEXT NOT NULL DEFAULT \'123456\'').run(); } catch(e) {}
+
 // Seed default members if table is empty
 const memberCount = db.prepare('SELECT COUNT(*) as count FROM members').get();
 if (memberCount.count === 0) {
@@ -64,17 +68,26 @@ if (memberCount.count === 0) {
 
 // ============ API Routes ============
 
-// Get all members
+// Get all members (without passwords)
 app.get('/api/members', (req, res) => {
-  const members = db.prepare('SELECT * FROM members ORDER BY id').all();
+  const members = db.prepare('SELECT id, name FROM members ORDER BY id').all();
   res.json(members);
 });
 
-// Update member name
+// Update member name and password
 app.put('/api/members/:id', (req, res) => {
-  const { name } = req.body;
-  db.prepare('UPDATE members SET name = ? WHERE id = ?').run(name, req.params.id);
+  const { name, password } = req.body;
+  if (name) db.prepare('UPDATE members SET name = ? WHERE id = ?').run(name, req.params.id);
+  if (password) db.prepare('UPDATE members SET password = ? WHERE id = ?').run(password, req.params.id);
   res.json({ success: true });
+});
+
+// Login
+app.post('/api/login', (req, res) => {
+  const { member_id, password } = req.body;
+  const member = db.prepare('SELECT * FROM members WHERE id = ? AND password = ?').get(member_id, password);
+  if (!member) return res.status(401).json({ error: '密码错误' });
+  res.json({ member_id: member.id, name: member.name });
 });
 
 // Get member statuses for a date

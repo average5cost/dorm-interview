@@ -8,6 +8,29 @@
 </head>
 <body>
   <div id="toast" class="toast"></div>
+
+  <!-- Login Modal -->
+  <div class="modal-overlay active" id="modalLogin">
+    <div class="modal modal-login">
+      <div class="modal-header">
+        <h2>🔐 登录</h2>
+      </div>
+      <div class="modal-body">
+        <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:16px">选择你的身份并输入密码</p>
+        <div class="form-group">
+          <label>选择身份</label>
+          <select id="loginMember"></select>
+        </div>
+        <div class="form-group">
+          <label>密码</label>
+          <input type="password" id="loginPassword" placeholder="默认密码 123456">
+        </div>
+        <div id="loginError" style="color:var(--danger);font-size:0.8rem;margin-bottom:8px;display:none"></div>
+        <button class="btn btn-primary" id="btnLogin" style="width:100%">登录</button>
+      </div>
+    </div>
+  </div>
+
   <header>
     <h1>🏠 宿舍面试日程</h1>
     <nav>
@@ -136,7 +159,6 @@
         <div class="msg-empty">暂无留言</div>
       </div>
       <div class="msg-input-area">
-        <select id="msgMember" class="msg-member-select"></select>
         <input type="text" id="msgInput" placeholder="说点什么..." maxlength="200">
         <button id="msgSend" class="btn btn-sm btn-primary">发送</button>
       </div>
