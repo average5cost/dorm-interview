@@ -9,8 +9,9 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Database setup
-const db = new Database(path.join(__dirname, 'dorm.db'));
+// Database setup — use persistent disk on Render if available
+const DATA_DIR = process.env.RENDER_DISK_MOUNT_PATH || __dirname;
+const db = new Database(path.join(DATA_DIR, 'dorm.db'));
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
