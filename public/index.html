@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>宿舍面试日程</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="toast" class="toast"></div>
+  <header>
+    <h1>🏠 宿舍面试日程</h1>
+    <nav>
+      <button class="nav-btn active" data-view="list">📋 面试列表</button>
+      <button class="nav-btn" data-view="timeline">📅 日程视图</button>
+    </nav>
+    <div class="header-right" style="display:flex;align-items:center;gap:12px">
+      <span id="pollIndicator" class="poll-indicator" title="自动刷新中">🔄 实时</span>
+      <button class="btn btn-sm" id="btnMembers">👥 成员</button>
+      <button class="btn-add" id="btnAdd">+ 添加面试</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- List View -->
+    <section id="view-list" class="view active">
+      <div class="filter-bar">
+        <label>筛选日期：</label>
+        <input type="date" id="filterDate">
+        <button class="btn btn-sm" id="btnClearFilter">清除筛选</button>
+      </div>
+      <div id="interviewList" class="interview-list"></div>
+    </section>
+
+    <!-- Timeline View -->
+    <section id="view-timeline" class="view">
+      <div class="timeline-nav">
+        <button class="btn" id="btnPrevWeek">◀ 上一周</button>
+        <span id="weekLabel"></span>
+        <button class="btn" id="btnNextWeek">▶ 下一周</button>
+      </div>
+      <div id="timeline" class="timeline"></div>
+    </section>
+  </main>
+
+  <!-- Add/Edit Modal -->
+  <div class="modal-overlay" id="modalForm">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="modalFormTitle">添加面试</h2>
+        <button class="btn-close" data-close="modalForm">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="interviewForm">
+          <input type="hidden" id="formId">
+          <div class="form-group">
+            <label>面试人 <span class="required">*</span></label>
+            <select id="formMember" required>
+              <option value="">请选择</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>面试公司 <span class="required">*</span></label>
+            <input type="text" id="formCompany" required placeholder="例如：字节跳动">
+          </div>
+          <div class="form-group">
+            <label>面试岗位 <span class="required">*</span></label>
+            <input type="text" id="formPosition" required placeholder="例如：前端开发实习生">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>面试日期 <span class="required">*</span></label>
+              <input type="date" id="formDate" required>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>开始时间 <span class="required">*</span></label>
+              <input type="time" id="formStartTime" required>
+            </div>
+            <div class="form-group">
+              <label>结束时间 <span class="required">*</span></label>
+              <input type="time" id="formEndTime" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>备注</label>
+            <textarea id="formNotes" rows="2" placeholder="可选备注信息"></textarea>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-cancel" data-close="modalForm">取消</button>
+            <button type="submit" class="btn btn-primary">保存</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detail Modal -->
+  <div class="modal-overlay" id="modalDetail">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>面试详情</h2>
+        <button class="btn-close" data-close="modalDetail">&times;</button>
+      </div>
+      <div class="modal-body" id="detailContent"></div>
+    </div>
+  </div>
+
+  <!-- Members Modal -->
+  <div class="modal-overlay" id="modalMembers">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>👥 成员管理</h2>
+        <button class="btn-close" data-close="modalMembers">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="hint-text">修改宿舍成员的名字，四个人都可以编辑。</p>
+        <div id="memberEditList"></div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-cancel" data-close="modalMembers">关闭</button>
+          <button type="button" class="btn btn-primary" id="btnSaveMembers">保存</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
