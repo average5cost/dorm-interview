@@ -681,6 +681,17 @@ function updateMsgBadge() {
   }
 }
 
+function beijingTimeStr() {
+  const now = beijingNow();
+  const y = now.getFullYear();
+  const mo = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  const h = String(now.getHours()).padStart(2, '0');
+  const mi = String(now.getMinutes()).padStart(2, '0');
+  const s = String(now.getSeconds()).padStart(2, '0');
+  return `${y}-${mo}-${d} ${h}:${mi}:${s}`;
+}
+
 async function sendMessage() {
   const input = document.getElementById('msgInput');
   const content = input.value.trim();
@@ -688,7 +699,7 @@ async function sendMessage() {
 
   await api('/api/messages', {
     method: 'POST',
-    body: JSON.stringify({ member_id: currentUser.member_id, content })
+    body: JSON.stringify({ member_id: currentUser.member_id, content, created_at: beijingTimeStr() })
   });
   input.value = '';
   await loadMessages();
@@ -714,10 +725,8 @@ function beijingNow() {
 
 function formatBeijingTime(dateStr) {
   if (!dateStr) return '';
-  // dateStr from SQLite is 'YYYY-MM-DD HH:MM:SS' or similar
-  const d = new Date(dateStr.replace(' ', 'T') + '+08:00');
-  if (isNaN(d.getTime())) return dateStr.slice(11, 16);
-  return d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Shanghai' });
+  // Stored as 'YYYY-MM-DD HH:MM:SS' in Beijing time
+  return dateStr.slice(11, 16);
 }
 
 function updateClock() {

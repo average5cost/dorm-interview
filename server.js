@@ -308,11 +308,12 @@ app.get('/api/messages', (req, res) => {
 });
 
 app.post('/api/messages', (req, res) => {
-  const { member_id, content } = req.body;
+  const { member_id, content, created_at } = req.body;
   if (!member_id || !content || !content.trim()) {
     return res.status(400).json({ error: '内容不能为空' });
   }
-  db.prepare('INSERT INTO messages (member_id, content) VALUES (?, ?)').run(member_id, content.trim());
+  const time = created_at || new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }).replace(/\//g, '-');
+  db.prepare('INSERT INTO messages (member_id, content, created_at) VALUES (?, ?, ?)').run(member_id, content.trim(), time);
   cleanMessages();
   res.json({ success: true });
 });
