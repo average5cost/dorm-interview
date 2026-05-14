@@ -152,7 +152,10 @@
   <div id="msgPanel" class="msg-panel">
     <div class="msg-header" id="msgToggle">
       <span>💬 留言板</span>
-      <span id="msgBadge" class="msg-badge hidden">0</span>
+      <span style="display:flex;align-items:center;gap:8px">
+        <button class="btn btn-sm btn-danger" id="msgClear" style="display:none;font-size:0.7rem;padding:2px 8px" onclick="event.stopPropagation()">清空</button>
+        <span id="msgBadge" class="msg-badge hidden">0</span>
+      </span>
     </div>
     <div class="msg-body">
       <div class="msg-list" id="msgList">

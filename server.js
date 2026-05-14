@@ -316,6 +316,14 @@ app.post('/api/messages', (req, res) => {
   res.json({ success: true });
 });
 
+// Admin clear all messages
+app.delete('/api/messages', (req, res) => {
+  const { admin_id } = req.body;
+  if (admin_id !== 5) return res.status(403).json({ error: '仅管理员可清空' });
+  db.prepare('DELETE FROM messages').run();
+  res.json({ success: true });
+});
+
 // Start server - bind to all interfaces so LAN users can access
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`宿舍面试系统已启动！`);

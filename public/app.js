@@ -150,6 +150,10 @@ function restoreLogin() {
 function onLoginSuccess() {
   document.getElementById('modalLogin').classList.remove('active');
   updateHeaderUser();
+  // Show clear button for admin
+  if (currentUser && currentUser.member_id === 5) {
+    document.getElementById('msgClear').style.display = 'inline-block';
+  }
   loadInterviews();
   initMessagePanel();
   startPolling();
@@ -614,6 +618,15 @@ function initMessagePanel() {
   document.getElementById('msgSend').addEventListener('click', sendMessage);
   document.getElementById('msgInput').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') sendMessage();
+  });
+  document.getElementById('msgClear').addEventListener('click', async () => {
+    if (!confirm('确认清空所有留言？')) return;
+    await api('/api/messages', {
+      method: 'DELETE',
+      body: JSON.stringify({ admin_id: currentUser.member_id })
+    });
+    messages = [];
+    renderMessages();
   });
 
   loadMessages();
