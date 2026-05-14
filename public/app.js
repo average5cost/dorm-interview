@@ -8,6 +8,8 @@ let lastDataHash = '';
 
 // ============ Init ============
 document.addEventListener('DOMContentLoaded', () => {
+  updateClock();
+  setInterval(updateClock, 1000);
   initTimelineWeek();
   loadMembers().then(() => {
     restoreLogin();
@@ -234,13 +236,14 @@ function renderInterviewList() {
   }
 
   container.innerHTML = interviews.map(iv => {
-    const date = new Date(iv.date + 'T00:00:00');
-    const dayNum = date.getDate();
-    const monthNum = date.getMonth() + 1;
+    const [y, m, d] = iv.date.split('-').map(Number);
+    const dayNum = d;
+    const monthNum = m;
     const weekdays = ['周日','周一','周二','周三','周四','周五','周六'];
-    const weekday = weekdays[date.getDay()];
+    const weekday = weekdays[new Date(y, m-1, d).getDay()];
     const memberIdx = members.findIndex(m => m.id === iv.member_id);
     const memberClass = `member-${memberIdx + 1}`;
+    const cd = getCountdown(iv);
 
     return `
     <div class="interview-card" onclick="openDetail(${iv.id})">
@@ -253,6 +256,7 @@ function renderInterviewList() {
         <h3>${esc(iv.company)} - ${esc(iv.position)}</h3>
         <div class="meta">
           <span>🕐 ${iv.start_time}-${iv.end_time}</span>
+          ${cd ? `<span class="countdown-tag ${cd.cls}">${cd.text}</span>` : ''}
         </div>
       </div>
       <span class="card-member ${memberClass}">${esc(iv.member_name)}</span>
@@ -653,7 +657,7 @@ function renderMessages() {
   list.innerHTML = messages.map(msg => {
     const isMine = myId === msg.member_id;
     const cls = isMine ? 'msg-mine' : 'msg-other';
-    const time = msg.created_at ? msg.created_at.slice(11, 16) : '';
+    const time = formatBeijingTime(msg.created_at);
     return `
       <div class="msg-bubble ${cls}">
         ${isMine ? '' : `<div class="msg-sender">${esc(msg.member_name)}</div>`}
@@ -701,6 +705,46 @@ function showToast(msg) {
   toastTimer = setTimeout(() => {
     toast.classList.remove('show');
   }, 3000);
+}
+
+// ============ Beijing Time ============
+function beijingNow() {
+  return new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Shanghai' }));
+}
+
+function formatBeijingTime(dateStr) {
+  if (!dateStr) return '';
+  // dateStr from SQLite is 'YYYY-MM-DD HH:MM:SS' or similar
+  const d = new Date(dateStr.replace(' ', 'T') + '+08:00');
+  if (isNaN(d.getTime())) return dateStr.slice(11, 16);
+  return d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Shanghai' });
+}
+
+function updateClock() {
+  const now = beijingNow();
+  const dateStr = now.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
+  const timeStr = now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const dayNames = ['周日','周一','周二','周三','周四','周五','周六'];
+  const clock = document.getElementById('clock');
+  if (clock) {
+    clock.innerHTML = `<span>${timeStr}</span><span class="clock-date">${dateStr} ${dayNames[now.getDay()]}</span>`;
+  }
+}
+
+function getCountdown(interview) {
+  const now = beijingNow();
+  const start = new Date(interview.date + 'T' + interview.start_time + ':00+08:00');
+  if (isNaN(start.getTime())) return null;
+
+  const diffMs = start - now;
+  const diffMin = Math.floor(diffMs / 60000);
+  const diffHour = Math.floor(diffMs / 3600000);
+  const diffDay = Math.floor(diffMs / 86400000);
+
+  if (diffMs < 0) return { text: '已结束', cls: 'countdown-past' };
+  if (diffMin < 60) return { text: `还有${diffMin}分钟`, cls: 'countdown-soon' };
+  if (diffHour < 24) return { text: `还有${diffHour}小时`, cls: 'countdown-soon' };
+  return { text: `还有${diffDay}天`, cls: 'countdown-normal' };
 }
 
 // ============ Helpers ============
