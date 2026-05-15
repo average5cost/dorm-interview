@@ -509,7 +509,11 @@ async function openDetail(id) {
 // ============ Delete ============
 async function deleteInterview(id, company) {
   if (!confirm(`确认删除「${company}」的面试记录？`)) return;
-  await api(`/api/interviews/${id}`, { method: 'DELETE' });
+  const res = await api(`/api/interviews/${id}`, {
+    method: 'DELETE',
+    body: JSON.stringify({ user_id: currentUser.member_id })
+  });
+  if (res.error) { alert(res.error); return; }
   loadInterviews();
   if (currentView === 'timeline') loadTimeline();
 }
@@ -517,15 +521,22 @@ async function deleteInterview(id, company) {
 // ============ Members ============
 function openMembers() {
   const list = document.getElementById('memberEditList');
-  const colors = ['#4f46e5', '#0891b2', '#ea580c', '#16a34a'];
-  list.innerHTML = members.map((m, i) => `
-    <div class="member-edit-item" style="flex-wrap:wrap">
-      <span class="member-edit-dot" style="background:${colors[i]}"></span>
-      <input type="text" class="member-name-input" data-id="${m.id}" value="${esc(m.name)}" style="flex:1;min-width:100px" placeholder="姓名">
-      <input type="password" class="member-password-input" data-id="${m.id}" value="" style="width:100px;padding:6px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem" placeholder="新密码">
-      <span style="font-size:0.7rem;color:var(--text-muted)">留空不修改密码</span>
-    </div>
-  `).join('');
+  const colors = ['#4f46e5', '#0891b2', '#ea580c', '#16a34a', '#9333ea'];
+  const myId = currentUser ? currentUser.member_id : -1;
+  const isAdmin = myId === 5;
+  list.innerHTML = members.map((m, i) => {
+    const isMe = m.id === myId;
+    const nameInput = `<input type="text" class="member-name-input" data-id="${m.id}" value="${esc(m.name)}" style="flex:1;min-width:100px" placeholder="姓名">`;
+    const pwdInput = (isMe || isAdmin)
+      ? `<input type="password" class="member-password-input" data-id="${m.id}" value="" style="width:100px;padding:6px;border:1px solid var(--border);border-radius:6px;font-size:0.85rem" placeholder="新密码"><span style="font-size:0.7rem;color:var(--text-muted)">留空不修改</span>`
+      : `<span style="font-size:0.75rem;color:var(--text-muted)">只能修改自己的密码</span>`;
+
+    return `<div class="member-edit-item" style="flex-wrap:wrap">
+      <span class="member-edit-dot" style="background:${colors[i % colors.length]}"></span>
+      ${nameInput}
+      ${pwdInput}
+    </div>`;
+  }).join('');
   document.getElementById('modalMembers').classList.add('active');
 }
 
@@ -541,7 +552,9 @@ async function saveMembers() {
     if (name && name !== members.find(m => m.id === parseInt(id)).name) body.name = name;
     if (password) body.password = password;
     if (Object.keys(body).length > 0) {
-      await api(`/api/members/${id}`, { method: 'PUT', body: JSON.stringify(body) });
+      body.user_id = currentUser.member_id;
+      const res = await api(`/api/members/${id}`, { method: 'PUT', body: JSON.stringify(body) });
+      if (res.error) { alert(res.error); return; }
     }
   }
   await loadMembers();

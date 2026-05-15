@@ -98,7 +98,11 @@ app.get('/api/members', async (req, res) => {
 
 // Update member name and password
 app.put('/api/members/:id', async (req, res) => {
-  const { name, password } = req.body;
+  const { name, password, user_id } = req.body;
+  // Only allow changing own password (admin can change anyone's)
+  if (password && parseInt(req.params.id) !== user_id && user_id !== 5) {
+    return res.status(403).json({ error: '只能修改自己的密码' });
+  }
   if (name) await db.execute('UPDATE members SET name = ? WHERE id = ?', [name, req.params.id]);
   if (password) await db.execute('UPDATE members SET password = ? WHERE id = ?', [password, req.params.id]);
   res.json({ success: true });
@@ -241,8 +245,13 @@ app.put('/api/interviews/:id', async (req, res) => {
   res.json({ success: true });
 });
 
-// Delete interview
+// Delete interview (only owner or admin can delete)
 app.delete('/api/interviews/:id', async (req, res) => {
+  const interview = (await db.execute('SELECT member_id FROM interviews WHERE id = ?', [req.params.id])).rows[0];
+  if (!interview) return res.status(404).json({ error: '面试不存在' });
+  if (interview.member_id !== req.body.user_id && req.body.user_id !== 5) {
+    return res.status(403).json({ error: '只能删除自己的面试' });
+  }
   await db.execute('DELETE FROM interviews WHERE id = ?', [req.params.id]);
   res.json({ success: true });
 });
