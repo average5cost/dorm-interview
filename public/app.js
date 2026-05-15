@@ -222,6 +222,11 @@ async function loadTimeline() {
 }
 
 // ============ Render ============
+function isPast(iv) {
+  const end = new Date(iv.date + 'T' + iv.end_time + ':00+08:00');
+  return !isNaN(end.getTime()) && end <= beijingNow();
+}
+
 function renderInterviewList() {
   const container = document.getElementById('interviewList');
 
@@ -235,10 +240,11 @@ function renderInterviewList() {
     return;
   }
 
-  container.innerHTML = interviews.map(iv => {
+  const upcoming = interviews.filter(iv => !isPast(iv));
+  const past = interviews.filter(iv => isPast(iv));
+
+  function cardHtml(iv) {
     const [y, m, d] = iv.date.split('-').map(Number);
-    const dayNum = d;
-    const monthNum = m;
     const weekdays = ['周日','周一','周二','周三','周四','周五','周六'];
     const weekday = weekdays[new Date(y, m-1, d).getDay()];
     const memberIdx = members.findIndex(m => m.id === iv.member_id);
@@ -246,10 +252,10 @@ function renderInterviewList() {
     const cd = getCountdown(iv);
 
     return `
-    <div class="interview-card" onclick="openDetail(${iv.id})">
+    <div class="interview-card${isPast(iv) ? ' card-past' : ''}" onclick="openDetail(${iv.id})">
       <div class="card-date">
-        <div class="day">${dayNum}</div>
-        <div class="month">${monthNum}月</div>
+        <div class="day">${d}</div>
+        <div class="month">${m}月</div>
         <div class="weekday">${weekday}</div>
       </div>
       <div class="card-info">
@@ -265,7 +271,25 @@ function renderInterviewList() {
         <button class="btn btn-sm btn-danger" onclick="deleteInterview(${iv.id}, '${esc(iv.company)}')">🗑</button>
       </div>
     </div>`;
-  }).join('');
+  }
+
+  let html = '';
+
+  if (upcoming.length > 0) {
+    html += `<div class="section-title">📋 即将面试</div>`;
+    html += upcoming.map(cardHtml).join('');
+  }
+
+  if (past.length > 0) {
+    html += `<div class="section-title section-past" id="pastToggle" onclick="event.preventDefault();const list=document.getElementById('pastList');const arrow=document.getElementById('pastArrow');if(list.style.display==='none'){list.style.display='flex';arrow.textContent='▾'}else{list.style.display='none';arrow.textContent='▸'}">
+      📦 已结束 (${past.length}) <span id="pastArrow">▾</span>
+    </div>`;
+    html += `<div id="pastList" style="display:flex;flex-direction:column;gap:12px;opacity:0.7">`;
+    html += past.map(cardHtml).join('');
+    html += `</div>`;
+  }
+
+  container.innerHTML = html;
 }
 
 function renderTimeline(days) {

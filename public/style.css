@@ -757,6 +757,32 @@ main {
 .countdown-normal { background: #dbeafe; color: #1e40af; }
 .countdown-past { background: #f1f5f9; color: #94a3b8; }
 
+.card-past {
+  opacity: 0.55;
+  background: #fafaf9;
+}
+
+.card-past:hover {
+  opacity: 0.8;
+}
+
+.section-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  padding: 8px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.section-past {
+  cursor: pointer;
+  user-select: none;
+  margin-top: 20px;
+}
+
+.section-past:hover { color: var(--text); }
+
 /* Timeline slots arranged in columns */
 .timeline-cell {
   position: relative;
